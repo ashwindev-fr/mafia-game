@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin – Room {{ code }}</title>
+    <meta name="description" content="Admin dashboard for Mafia game room {{ code }}. Control voting rounds and view results.">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body class="admin-body" data-room="{{ code }}">
+
+    <div class="particles" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="page-container">
+        <!-- Header -->
+        <header class="page-header">
+            <span class="badge badge-admin">👑 Admin</span>
+            <h1 class="room-code-display">Room <span id="room-code-text">{{ code }}</span></h1>
+            <div class="day-banner">
+                <span class="day-sun">☀️</span>
+                <span class="day-text">Day <span id="day-number">{{ room.day }}</span></span>
+            </div>
+            <button class="btn-history" id="btn-history" onclick="toggleHistory()">📜 History</button>
+        </header>
+
+        <!-- Joker Banner -->
+        <div id="joker-banner" class="joker-banner hidden">
+            🃏 JOKER WINS 🃏
+        </div>
+
+        <!-- Controls -->
+        <section class="glass-card controls-card">
+            <h2>Voting Controls</h2>
+            <div class="control-buttons">
+                <button class="btn btn-success" id="btn-start-voting" onclick="startVoting()">▶ Start Day Voting</button>
+                <button class="btn btn-danger" id="btn-end-voting" onclick="endVoting()" disabled>⏹ End Voting</button>
+                <button class="btn btn-warning" id="btn-reset-round" onclick="resetRound()">🔄 Reset Voting Round</button>
+            </div>
+        </section>
+
+        <!-- Vote Progress -->
+        <section class="glass-card" id="progress-section">
+            <h2>Vote Progress</h2>
+            <div class="voting-timer hidden" id="voting-timer">
+                <span class="timer-icon">⏱</span>
+                <span class="timer-value" id="timer-display">00:00</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+            </div>
+            <p class="progress-text">Votes submitted: <strong id="votes-cast">0</strong> / <strong id="total-alive">0</strong></p>
+        </section>
+
+        <!-- Player List -->
+        <section class="glass-card">
+            <h2>Players</h2>
+            <ul class="player-list" id="player-list">
+                <!-- populated by JS -->
+            </ul>
+        </section>
+
+        <!-- Results (hidden until voting ends) -->
+        <section class="glass-card hidden" id="results-section">
+            <h2>Vote Results</h2>
+            <div class="chart-container">
+                <canvas id="results-chart"></canvas>
+            </div>
+            <h3 class="vote-map-title">Who Voted For Whom</h3>
+            <div id="vote-map" class="vote-map-grid"></div>
+        </section>
+
+        <!-- Post-Voting Actions -->
+        <section class="glass-card hidden" id="post-voting-section">
+            <h2>Post-Voting Actions</h2>
+            <div class="input-group">
+                <label for="eliminate-select">Eliminate Player</label>
+                <select id="eliminate-select"></select>
+            </div>
+            <div class="control-buttons">
+                <button class="btn btn-danger" onclick="eliminatePlayer()">☠ Eliminate Selected</button>
+                <button class="btn btn-joker" onclick="triggerJoker()">🃏 Joker Wins</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- History Modal -->
+    <div class="history-overlay hidden" id="history-overlay" onclick="toggleHistory()">
+        <div class="history-panel" onclick="event.stopPropagation()">
+            <div class="history-header">
+                <h2>📜 Game History</h2>
+                <button class="history-close" onclick="toggleHistory()">✕</button>
+            </div>
+            <div class="history-content" id="history-content">
+                <p class="text-muted">No rounds played yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        initAdmin("{{ code }}");
+    </script>
+</body>
+</html>

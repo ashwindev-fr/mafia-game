@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mafia Game – Join or Create Room</title>
+        <meta
+            name="description"
+            content="Mafia party game voting app. Create or join a room to vote anonymously during daytime rounds."
+        >
+        <link rel="stylesheet" href="/static/style.css">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+            rel="stylesheet"
+        >
+    </head>
+    <body class="home-body">
+        <!-- Floating particles background -->
+        <div class="particles" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="home-container">
+            <header class="home-header">
+                <h1 class="logo">🎭 MAFIA</h1>
+                <p class="tagline">Welcome to Mafia · The Ultimate Party Game</p>
+                <p class="tagline" style="margin-top:2px;font-size:0.8rem;opacity:0.7">Powered by Pathshala Club</p>
+            </header>
+
+            <div class="card-grid">
+                <!-- Join Room Card -->
+                <div class="glass-card" id="join-card">
+                    <div class="card-icon">🕵️</div>
+                    <h2>Join Room</h2>
+                    <p class="card-desc">Enter the code to play</p>
+                    <form action="/join_room" method="POST" id="join-form">
+                        <div class="input-group">
+                            <label for="join_room_code">Room Code</label>
+                            <input
+                                type="text"
+                                id="join_room_code"
+                                name="room_code"
+                                placeholder="e.g. X7K2P"
+                                maxlength="6"
+                                required
+                                autocapitalize="characters"
+                            >
+                        </div>
+                        <div class="input-group">
+                            <label for="player_name">Your Name</label>
+                            <input
+                                type="text"
+                                id="player_name"
+                                name="player_name"
+                                placeholder="Enter your name"
+                                maxlength="20"
+                                required
+                            >
+                        </div>
+                        <button
+                            type="submit"
+                            class="btn btn-accent"
+                            id="join-btn"
+                        >
+                            Join Room
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Create Room Card -->
+                <div class="glass-card" id="create-card">
+                    <div class="card-icon">👑</div>
+                    <h2>Create Room</h2>
+                    <p class="card-desc">You are the Game Master</p>
+                    <form action="/create_room" method="POST" id="create-form">
+                        <div class="input-group">
+                            <label for="max_players">Max Players</label>
+                            <input
+                                type="number"
+                                id="max_players"
+                                name="max_players"
+                                value="10"
+                                min="3"
+                                max="30"
+                                required
+                            >
+                        </div>
+                        <div class="input-group">
+                            <label for="room_code_input">Room Code <span
+                                    class="optional"
+                                >(optional)</span></label>
+                            <input
+                                type="text"
+                                id="room_code_input"
+                                name="room_code"
+                                placeholder="Auto-generated"
+                                maxlength="6"
+                                autocapitalize="characters"
+                            >
+                        </div>
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            id="create-btn"
+                        >
+                            Create Room
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <footer class="home-footer">
+                <p>Votes stay secret · No roles stored · Pure gameplay</p>
+                <a href="/past_games" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:0.85rem;text-decoration:none;font-weight:600">📂 Browse Past Games →</a>
+            </footer>
+        </div>
+    </body>
+</html>

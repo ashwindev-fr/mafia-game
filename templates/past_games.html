@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Past Games – Mafia</title>
+    <meta name="description" content="Browse past Mafia game sessions and their complete history.">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="particles" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="page-container">
+        <header class="page-header">
+            <span class="badge badge-admin">📂 Archive</span>
+            <h1 class="logo" style="font-size:2rem">Past Games</h1>
+            <p class="day-label">Browse completed game sessions</p>
+            <a href="/" class="btn-history" style="text-decoration:none;margin-top:12px">← Back to Home</a>
+        </header>
+
+        <div id="games-list">
+            <div class="waiting-state">
+                <div class="pulse-dot"></div>
+                <p>Loading games...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Detail Modal -->
+    <div class="history-overlay hidden" id="game-detail-overlay" onclick="closeDetail()">
+        <div class="history-panel" onclick="event.stopPropagation()">
+            <div class="history-header">
+                <h2 id="detail-title">📜 Game Detail</h2>
+                <button class="history-close" onclick="closeDetail()">✕</button>
+            </div>
+            <div class="history-content" id="detail-content">
+                <p class="text-muted">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadGames() {
+            try {
+                const res = await fetch("/api/past_games");
+                const data = await res.json();
+                renderGames(data.games || []);
+            } catch (e) {
+                document.getElementById("games-list").innerHTML =
+                    '<p class="text-muted">Could not load games.</p>';
+            }
+        }
+
+        function renderGames(games) {
+            const container = document.getElementById("games-list");
+            if (games.length === 0) {
+                container.innerHTML = '<p class="text-muted">No games found yet. Play some games first!</p>';
+                return;
+            }
+            container.innerHTML = "";
+            for (const g of games) {
+                const card = document.createElement("div");
+                card.className = "glass-card";
+                card.style.cursor = "pointer";
+                card.style.marginBottom = "12px";
+                card.onclick = () => openDetail(g.room_code);
+
+                const playerNames = g.players.map(p => p.name).join(", ");
+                const date = g.created_at ? new Date(g.created_at).toLocaleDateString("en-US", {
+                    month: "short", day: "numeric", year: "numeric",
+                    hour: "2-digit", minute: "2-digit"
+                }) : "Unknown date";
+
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <h2 style="font-size:1.1rem">Room <span style="color:var(--accent)">${g.room_code}</span></h2>
+                        <span class="badge ${g.status === 'active' ? 'badge-voted' : 'badge-eliminated'}">${g.status}</span>
+                    </div>
+                    <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:6px">📅 ${date}</p>
+                    <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:6px">
+                        👥 ${g.total_players} players · ☀ ${g.total_days_played} days played
+                    </p>
+                    <p style="color:var(--text-muted);font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                        ${playerNames}
+                    </p>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        async function openDetail(code) {
+            const overlay = document.getElementById("game-detail-overlay");
+            overlay.classList.remove("hidden");
+            const content = document.getElementById("detail-content");
+            const title = document.getElementById("detail-title");
+            content.innerHTML = '<p class="text-muted">Loading...</p>';
+            title.textContent = `📜 Room ${code}`;
+
+            try {
+                const res = await fetch(`/api/past_game/${code}`);
+                const g = await res.json();
+                renderDetail(g, content);
+            } catch (e) {
+                content.innerHTML = '<p class="text-muted">Could not load game.</p>';
+            }
+        }
+
+        function closeDetail() {
+            document.getElementById("game-detail-overlay").classList.add("hidden");
+        }
+
+        function formatTime(secs) {
+            const s = Math.round(secs);
+            if (s < 60) return s + "s";
+            return Math.floor(s / 60) + "m " + (s % 60) + "s";
+        }
+
+        function renderDetail(g, container) {
+            let html = "";
+
+            // Players
+            html += '<div style="margin-bottom:16px">';
+            html += '<h3 class="vote-map-title" style="margin-top:0;border:none;padding:0">Players</h3>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+            for (const p of g.players || []) {
+                const isElim = (g.eliminated || []).includes(p.id);
+                html += `<span class="history-tally-item" style="${isElim ? 'opacity:0.4;text-decoration:line-through' : ''}">
+                    #${p.id} ${p.name}${isElim ? ' ☠' : ''}
+                </span>`;
+            }
+            html += '</div></div>';
+
+            // History
+            const history = g.history || [];
+            if (history.length === 0) {
+                html += '<p class="text-muted">No rounds played in this game.</p>';
+            } else {
+                for (const entry of history) {
+                    html += `<div class="history-day-card">`;
+                    html += `<div class="history-day-title">☀ Day ${entry.day}</div>`;
+
+                    // Tally
+                    if (entry.results) {
+                        const filtered = entry.results.filter(r => r[1] >= 1);
+                        if (filtered.length > 0) {
+                            html += '<div class="history-tally">';
+                            for (const [name, count] of filtered) {
+                                html += `<span class="history-tally-item">${name} <span class="history-tally-count">${count}</span></span>`;
+                            }
+                            html += '</div>';
+                        }
+                    }
+
+                    // Vote map
+                    if (entry.vote_map && entry.vote_map.length > 0) {
+                        html += '<div class="history-votes-grid">';
+                        for (const v of entry.vote_map) {
+                            html += `<div class="history-vote-cell">
+                                <span class="hv-voter">${v.voter}</span>
+                                <span class="hv-arrow">→</span>
+                                <span class="hv-target">${v.target}</span>
+                                <span class="hv-time">⏱${formatTime(v.time_taken)}</span>
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        loadGames();
+    </script>
+</body>
+</html>

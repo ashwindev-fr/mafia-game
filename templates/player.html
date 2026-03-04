@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player {{ player.id }} – {{ player.name }}</title>
+    <meta name="description" content="Player view for Mafia game room {{ code }}. Cast your vote anonymously.">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body class="player-body" data-room="{{ code }}" data-player-id="{{ player.id }}" data-player-name="{{ player.name }}">
+
+    <div class="particles" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="page-container">
+        <!-- Header -->
+        <header class="page-header">
+            <span class="badge badge-player">🕵️ Player {{ player.id }}</span>
+            <h1 class="player-name-display">{{ player.name }}</h1>
+            <p class="day-label">Room <strong>{{ code }}</strong></p>
+            <div class="day-banner">
+                <span class="day-sun">☀️</span>
+                <span class="day-text">Day <span id="day-number">1</span></span>
+            </div>
+            <button class="btn-history" id="btn-history" onclick="toggleHistory()">📜 History</button>
+        </header>
+
+        <!-- Joker Banner -->
+        <div id="joker-banner" class="joker-banner hidden">
+            🃏 JOKER WINS 🃏
+        </div>
+
+        <!-- Eliminated Banner -->
+        <div id="eliminated-banner" class="eliminated-banner hidden">
+            ☠ You have been eliminated
+        </div>
+
+        <!-- Waiting for voting to open -->
+        <section class="glass-card" id="waiting-section">
+            <div class="waiting-state">
+                <div class="pulse-dot"></div>
+                <p>Waiting for the Game Master to start voting...</p>
+            </div>
+        </section>
+
+        <!-- Voting Section -->
+        <section class="glass-card hidden" id="voting-section">
+            <h2>Cast Your Vote</h2>
+            <div class="vote-buttons" id="vote-buttons">
+                <!-- populated by JS -->
+            </div>
+        </section>
+
+        <!-- Already Voted State -->
+        <section class="glass-card hidden" id="voted-section">
+            <div class="waiting-state">
+                <div class="check-icon">✓</div>
+                <p>Vote submitted! Waiting for others...</p>
+            </div>
+        </section>
+
+        <!-- Vote Progress -->
+        <section class="glass-card" id="progress-section">
+            <div class="voting-timer hidden" id="voting-timer">
+                <span class="timer-icon">⏱</span>
+                <span class="timer-value" id="timer-display">00:00</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+            </div>
+            <p class="progress-text">Votes submitted: <strong id="votes-cast">0</strong> / <strong id="total-alive">0</strong></p>
+        </section>
+
+        <!-- Results (hidden until voting ends) -->
+        <section class="glass-card hidden" id="results-section">
+            <h2>Vote Results</h2>
+            <div class="chart-container">
+                <canvas id="results-chart"></canvas>
+            </div>
+            <h3 class="vote-map-title">Who Voted For Whom</h3>
+            <div id="vote-map" class="vote-map-grid"></div>
+        </section>
+    </div>
+
+    <!-- History Modal -->
+    <div class="history-overlay hidden" id="history-overlay" onclick="toggleHistory()">
+        <div class="history-panel" onclick="event.stopPropagation()">
+            <div class="history-header">
+                <h2>📜 Game History</h2>
+                <button class="history-close" onclick="toggleHistory()">✕</button>
+            </div>
+            <div class="history-content" id="history-content">
+                <p class="text-muted">No rounds played yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        initPlayer("{{ code }}", {{ player.id }}, "{{ player.name }}");
+    </script>
+</body>
+</html>
