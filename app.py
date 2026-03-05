@@ -128,6 +128,12 @@ def create_room():
         "vote_times": {},
         "history": [],
         "events": [], # Global event log
+        "roles": {
+            "mafia": "",
+            "doctor": "",
+            "detective": "",
+            "joker": ""
+        },
         "created_at": datetime.now(timezone.utc),
         "status": "active",
     }
@@ -420,6 +426,31 @@ def api_joker_wins():
     room["joker_message"] = True
     room["status"] = "finished"
     _add_event(room, "Game Ended: Joker wins!")
+    _sync_to_db(code)
+    return jsonify({"success": True})
+
+
+@app.route("/api/save_roles", methods=["POST"])
+def api_save_roles():
+    data = request.get_json()
+    code = data.get("room_code")
+    roles = data.get("roles", {})
+    
+    room = _get_room(code)
+    if not room:
+        return jsonify({"error": "Room not found"}), 404
+        
+    # Verify admin
+    if session.get(f"admin_{code}") != room["admin_token"]:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    room["roles"] = {
+        "mafia": roles.get("mafia", ""),
+        "doctor": roles.get("doctor", ""),
+        "detective": roles.get("detective", ""),
+        "joker": roles.get("joker", "")
+    }
+    
     _sync_to_db(code)
     return jsonify({"success": True})
 

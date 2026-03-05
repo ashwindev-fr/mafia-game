@@ -25,7 +25,10 @@
                 <span class="day-sun">☀️</span>
                 <span class="day-text">Day <span id="day-number">1</span></span>
             </div>
-            <button class="btn-history" id="btn-history" onclick="toggleHistory()">📜 History</button>
+            <div class="header-actions">
+                <button class="btn-secondary" id="btn-instructions" onclick="showInstructions()">📖 Instructions</button>
+                <button class="btn-history" id="btn-history" onclick="toggleHistory()">📜 History</button>
+            </div>
         </header>
 
         <!-- Joker Banner -->
@@ -83,6 +86,43 @@
             <h3 class="vote-map-title">Who Voted For Whom</h3>
             <div id="vote-map" class="vote-map-grid"></div>
         </section>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="instructions-modal" class="modal-overlay hidden" onclick="hideInstructions()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>📖 Game Instructions</h2>
+                <button class="modal-close" onclick="hideInstructions()">✕</button>
+            </div>
+            <div class="modal-body">
+                <h3>Goal of the Game</h3>
+                <p><strong>Town:</strong> Find and eliminate all Mafia members.</p>
+                <p><strong>Mafia:</strong> Outnumber the Town by eliminating them one by one.</p>
+                <p><strong>Joker:</strong> Get yourself eliminated during a voting round to win!</p>
+
+                <h3>Character Roles</h3>
+                <ul>
+                    <li><strong>👺 Mafia:</strong> Meets at night to choose a victim. During the day, they must blend in and divert suspicion.</li>
+                    <li><strong>🩺 Doctor:</strong> Chooses one person each night to save. If the Mafia attacks that person, they survive.</li>
+                    <li><strong>🔍 Detective:</strong> Investigates one person each night to learn their true identity.</li>
+                    <li><strong>🃏 Joker:</strong> A chaotic neutral role whose only goal is to be voted out by the group.</li>
+                    <li><strong>👥 Villager:</strong> Has no special night powers, but carries the power of the vote during the day.</li>
+                </ul>
+
+                <h3>How to Play</h3>
+                <ol>
+                    <li><strong>Night Phase:</strong> All players "close" their eyes. The GM (Admin) calls each role to perform their action covertly.</li>
+                    <li><strong>Day Phase:</strong> The GM announces who (if anyone) was killed. The group then discusses who they suspect.</li>
+                    <li><strong>Voting:</strong> The GM opens the voting round. Everyone casts an anonymous vote for the person they want to eliminate.</li>
+                    <li><strong>Elimination:</strong> The person with the most votes is eliminated from the game.</li>
+                </ol>
+
+                <div class="pro-tip">
+                    <strong>💡 Pro Tip:</strong> Encourage players to talk and debate! Use private side-discussions and subtle signals to make the game more intense.
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- History Modal -->

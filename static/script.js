@@ -624,3 +624,53 @@ function renderHistory(history) {
         container.appendChild(card);
     }
 }
+// ---- Roles (Admin Only) ----
+async function saveRoles() {
+    const roles = {
+        mafia: document.getElementById("role-mafia")?.value || "",
+        doctor: document.getElementById("role-doctor")?.value || "",
+        detective: document.getElementById("role-detective")?.value || "",
+        joker: document.getElementById("role-joker")?.value || ""
+    };
+
+    try {
+        const res = await fetch("/api/save_roles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ room_code: ROOM_CODE, roles: roles }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            const btn = document.querySelector(".roles-card .btn");
+            if (btn) {
+                const original = btn.innerHTML;
+                btn.innerHTML = "✅ Saved!";
+                setTimeout(() => btn.innerHTML = original, 2000);
+            }
+        }
+    } catch (e) {
+        console.error("Save roles failed", e);
+    }
+}
+
+// ---- Instructions Modal ----
+function showInstructions() {
+    const modal = document.getElementById("instructions-modal");
+    if (modal) modal.classList.remove("hidden");
+    document.body.style.overflow = "hidden"; // Prevent scroll
+}
+
+function hideInstructions() {
+    const modal = document.getElementById("instructions-modal");
+    if (modal) modal.classList.add("hidden");
+    document.body.style.overflow = ""; // Restore scroll
+}
+
+// Close modals on Escape key
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        hideInstructions();
+        const historyOverlay = document.getElementById("history-overlay");
+        if (historyOverlay) historyOverlay.classList.add("hidden");
+    }
+});
