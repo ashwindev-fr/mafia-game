@@ -28,6 +28,21 @@
                 <p class="tagline" style="margin-top:2px;font-size:0.8rem;opacity:0.7">Powered by Pathshala Club</p>
             </header>
 
+            <!-- Rejoin Banner (shown if active session found) -->
+            <div class="glass-card hidden" id="rejoin-banner" style="border-color:var(--accent);margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                    <span style="font-size:1.5rem">🔄</span>
+                    <div>
+                        <h2 style="font-size:1rem;margin:0">Active Game Found</h2>
+                        <p id="rejoin-info" style="color:var(--text-secondary);font-size:0.8rem;margin:2px 0 0"></p>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-primary" style="flex:1" onclick="rejoinGame()">Rejoin Game</button>
+                    <button class="btn" style="flex:0;padding:10px 16px;background:rgba(255,255,255,0.06)" onclick="dismissRejoin()">✕</button>
+                </div>
+            </div>
+
             <div class="card-grid">
                 <!-- Join Room Card -->
                 <div class="glass-card" id="join-card">
@@ -116,4 +131,41 @@
             </footer>
         </div>
     </body>
+
+    <script>
+        // Check for active session and show rejoin banner
+        (function() {
+            try {
+                const raw = localStorage.getItem("mafia_session");
+                if (!raw) return;
+                const session = JSON.parse(raw);
+                if (!session || !session.room_code || !session.url) return;
+
+                const banner = document.getElementById("rejoin-banner");
+                const info = document.getElementById("rejoin-info");
+                if (!banner || !info) return;
+
+                if (session.type === "admin") {
+                    info.textContent = `Admin · Room ${session.room_code}`;
+                } else {
+                    info.textContent = `${session.player_name || "Player"} · Room ${session.room_code}`;
+                }
+                banner.classList.remove("hidden");
+            } catch(e) {}
+        })();
+
+        function rejoinGame() {
+            try {
+                const session = JSON.parse(localStorage.getItem("mafia_session"));
+                if (session && session.url) {
+                    window.location.href = session.url;
+                }
+            } catch(e) {}
+        }
+
+        function dismissRejoin() {
+            localStorage.removeItem("mafia_session");
+            document.getElementById("rejoin-banner").classList.add("hidden");
+        }
+    </script>
 </html>

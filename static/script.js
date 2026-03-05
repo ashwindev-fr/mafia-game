@@ -36,6 +36,10 @@ function markVoted(roomCode, round) {
 function initAdmin(code) {
     ROOM_CODE = code;
     IS_ADMIN = true;
+    // Save admin session for reconnection
+    localStorage.setItem("mafia_session", JSON.stringify({
+        type: "admin", room_code: code, url: window.location.pathname
+    }));
     startPolling();
 }
 
@@ -44,6 +48,11 @@ function initPlayer(code, playerId, playerName) {
     PLAYER_ID = playerId;
     PLAYER_NAME = playerName;
     IS_ADMIN = false;
+    // Save player session for reconnection
+    localStorage.setItem("mafia_session", JSON.stringify({
+        type: "player", room_code: code, player_id: playerId,
+        player_name: playerName, url: window.location.pathname
+    }));
     startPolling();
 }
 

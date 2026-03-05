@@ -172,6 +172,23 @@
                 }
             }
 
+            // Global Events
+            const events = g.events || [];
+            if (events.length > 0) {
+                html += '<div style="margin-top:20px">';
+                html += '<h3 class="vote-map-title" style="border:none;padding:0">Game Event Log</h3>';
+                html += '<div class="glass-card" style="padding:12px;font-size:0.85rem;background:rgba(0,0,0,0.2)">';
+                for (const ev of events) {
+                    const time = ev.time ? new Date(ev.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+                    html += `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span style="color:var(--accent);font-weight:600">[${time}]</span> 
+                        <span style="color:var(--text-secondary)">Day ${ev.day}:</span> 
+                        <span>${ev.message}</span>
+                    </div>`;
+                }
+                html += '</div></div>';
+            }
+
             container.innerHTML = html;
         }
 

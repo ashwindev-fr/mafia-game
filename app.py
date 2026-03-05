@@ -3,6 +3,7 @@ Mafia Game Voting Web Application
 Flask backend with in-memory storage + MongoDB persistence.
 """
 
+import os
 import random
 import string
 import time
@@ -18,7 +19,7 @@ app.secret_key = uuid.uuid4().hex
 # ---------------------------------------------------------------------------
 # MongoDB connection
 # ---------------------------------------------------------------------------
-mongo_client = MongoClient("mongodb://localhost:27017/")
+mongo_client = MongoClient(os.environ.get("MONGO_URI", "mongodb://localhost:27017/"))
 db = mongo_client["mafia_games"]
 games_collection = db["games"]
 
@@ -56,6 +57,7 @@ def _sync_to_db(code):
         "voting_start_time": room["voting_start_time"],
         "vote_times": room["vote_times"],
         "history": room["history"],
+        "events": room.get("events", []),
         "created_at": room.get("created_at", datetime.now(timezone.utc)),
         "updated_at": datetime.now(timezone.utc),
         "status": room.get("status", "active"),
@@ -97,6 +99,7 @@ def create_room():
         "voting_start_time": None,
         "vote_times": {},
         "history": [],
+        "events": [], # Global event log
         "created_at": datetime.now(timezone.utc),
         "status": "active",
     }
@@ -301,6 +304,10 @@ def api_start_voting():
     room["voting_ended"] = False
     room["joker_message"] = False
     room["voting_start_time"] = time.time()
+    
+    # Log event
+    _add_event(room, f"Voting opened for Day {room['day']}")
+    
     _sync_to_db(code)
     return jsonify({"success": True})
 
@@ -319,11 +326,17 @@ def api_end_voting():
     # Save this day's results to history
     alive_players = [p for p in room["players"] if p["id"] not in room["eliminated"]]
     vote_map, results = _build_vote_results(room, alive_players)
-    room["history"].append({
+    
+    round_summary = {
         "day": room["day"],
         "vote_map": vote_map,
         "results": results,
-    })
+        "total_votes": len(room["votes"]),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    room["history"].append(round_summary)
+    
+    _add_event(room, f"Voting closed for Day {room['day']}. {len(room['votes'])} votes cast.")
 
     _sync_to_db(code)
     return jsonify({"success": True})
@@ -360,6 +373,10 @@ def api_eliminate():
 
     if player_id not in room["eliminated"]:
         room["eliminated"].append(player_id)
+        player = next((p for p in room["players"] if p["id"] == player_id), None)
+        if player:
+            _add_event(room, f"Player #{player['id']} ({player['name']}) was eliminated in Day {room['day']}.")
+            
     _sync_to_db(code)
     return jsonify({"success": True})
 
@@ -374,6 +391,7 @@ def api_joker_wins():
 
     room["joker_message"] = True
     room["status"] = "finished"
+    _add_event(room, "Game Ended: Joker wins!")
     _sync_to_db(code)
     return jsonify({"success": True})
 
@@ -405,6 +423,18 @@ def _build_vote_results(room, alive_players):
     return vote_map, results
 
 
+def _add_event(room, message):
+    """Utility to add a timestamped event message."""
+    event = {
+        "time": datetime.now(timezone.utc).isoformat(),
+        "day": room.get("day", 1),
+        "message": message
+    }
+    if "events" not in room:
+        room["events"] = []
+    room["events"].append(event)
+
+
 @app.route("/api/history/<code>")
 def api_history(code):
     room = rooms.get(code)
@@ -419,4 +449,5 @@ def api_history(code):
 
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+
