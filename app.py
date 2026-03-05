@@ -14,7 +14,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from pymongo import MongoClient
 
 app = Flask(__name__)
-app.secret_key = uuid.uuid4().hex
+app.secret_key = os.environ.get("SECRET_KEY", "mafia-secret-stable-key-123")
 
 # ---------------------------------------------------------------------------
 # MongoDB connection
@@ -81,6 +81,10 @@ def _sync_to_db(code):
     if not room:
         return
     
+    # Ensure room_code is in the room dict
+    if "room_code" not in room:
+        room["room_code"] = code
+    
     # Create a serializable copy
     doc = room.copy()
     
@@ -114,6 +118,7 @@ def create_room():
 
     admin_token = uuid.uuid4().hex
     rooms[code] = {
+        "room_code": code,
         "admin_token": admin_token,
         "players": [],
         "votes": {},
