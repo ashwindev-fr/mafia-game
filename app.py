@@ -33,35 +33,63 @@ def _generate_code(length=5):
     """Generate a random room code like X7K2P."""
     chars = string.ascii_uppercase + string.digits
     code = "".join(random.choices(chars, k=length))
-    while code in rooms:
+    while _get_room(code):
         code = "".join(random.choices(chars, k=length))
     return code
 
 
+def _get_room(code):
+    """
+    Retrieve room state from local memory or MongoDB.
+    Ensures consistency across multiple Gunicorn workers.
+    """
+    if not code:
+        return None
+    
+    # Normalize code
+    code = code.strip().upper()
+    
+    # 1. Check local memory
+    if code in rooms:
+        return rooms[code]
+    
+    # 2. Check MongoDB
+    doc = games_collection.find_one({"room_code": code}, {"_id": 0})
+    if doc:
+        # Deserialize vote_tokens (list -> set)
+        if "vote_tokens" in doc:
+            doc["vote_tokens"] = set(doc["vote_tokens"])
+        else:
+            doc["vote_tokens"] = set()
+            
+        # Ensure other fields exist
+        doc.setdefault("history", [])
+        doc.setdefault("events", [])
+        doc.setdefault("vote_times", {})
+        doc.setdefault("votes", {})
+        
+        # Cache in local memory for this worker
+        rooms[code] = doc
+        return doc
+        
+    return None
+
+
 def _sync_to_db(code):
     """Persist the current room state to MongoDB."""
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return
-    doc = {
-        "room_code": code,
-        "admin_token": room["admin_token"],
-        "players": room["players"],
-        "votes": room["votes"],
-        "max_players": room["max_players"],
-        "voting_open": room["voting_open"],
-        "voting_ended": room["voting_ended"],
-        "eliminated": room["eliminated"],
-        "day": room["day"],
-        "joker_message": room["joker_message"],
-        "voting_start_time": room["voting_start_time"],
-        "vote_times": room["vote_times"],
-        "history": room["history"],
-        "events": room.get("events", []),
-        "created_at": room.get("created_at", datetime.now(timezone.utc)),
-        "updated_at": datetime.now(timezone.utc),
-        "status": room.get("status", "active"),
-    }
+    
+    # Create a serializable copy
+    doc = room.copy()
+    
+    # Convert sets to lists for BSON serialization
+    if "vote_tokens" in doc and isinstance(doc["vote_tokens"], set):
+        doc["vote_tokens"] = list(doc["vote_tokens"])
+        
+    doc["updated_at"] = datetime.now(timezone.utc)
+    
     games_collection.update_one(
         {"room_code": code},
         {"$set": doc},
@@ -82,7 +110,7 @@ def index():
 def create_room():
     max_players = int(request.form.get("max_players", 10))
     custom_code = request.form.get("room_code", "").strip().upper()
-    code = custom_code if custom_code and custom_code not in rooms else _generate_code()
+    code = custom_code if custom_code and not _get_room(custom_code) else _generate_code()
 
     admin_token = uuid.uuid4().hex
     rooms[code] = {
@@ -116,7 +144,7 @@ def join_room():
     if not code or not name:
         return redirect(url_for("index"))
 
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return redirect(url_for("index"))
 
@@ -140,7 +168,7 @@ def join_room():
 
 @app.route("/admin/<code>")
 def admin_page(code):
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return redirect(url_for("index"))
     # Verify admin
@@ -151,7 +179,7 @@ def admin_page(code):
 
 @app.route("/player/<code>/<int:player_id>")
 def player_page(code, player_id):
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return redirect(url_for("index"))
     player = next((p for p in room["players"] if p["id"] == player_id), None)
@@ -215,7 +243,7 @@ def api_past_game_detail(code):
 @app.route("/api/room/<code>")
 def api_room(code):
     """Polling endpoint — returns room state."""
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
 
@@ -264,7 +292,7 @@ def api_vote():
     target_id = int(data.get("target_id"))
     device_token = data.get("device_token", "")
 
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
     if not room["voting_open"]:
@@ -296,7 +324,7 @@ def api_vote():
 def api_start_voting():
     data = request.get_json()
     code = data.get("room_code")
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
 
@@ -316,7 +344,7 @@ def api_start_voting():
 def api_end_voting():
     data = request.get_json()
     code = data.get("room_code")
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
 
@@ -346,7 +374,7 @@ def api_end_voting():
 def api_reset_round():
     data = request.get_json()
     code = data.get("room_code")
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
 
@@ -367,7 +395,7 @@ def api_eliminate():
     data = request.get_json()
     code = data.get("room_code")
     player_id = int(data.get("player_id"))
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
 
@@ -385,7 +413,7 @@ def api_eliminate():
 def api_joker_wins():
     data = request.get_json()
     code = data.get("room_code")
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
         return jsonify({"error": "Room not found"}), 404
 
@@ -437,14 +465,12 @@ def _add_event(room, message):
 
 @app.route("/api/history/<code>")
 def api_history(code):
-    room = rooms.get(code)
+    room = _get_room(code)
     if not room:
-        # Try loading from DB for past games
-        g = games_collection.find_one({"room_code": code}, {"_id": 0, "history": 1})
-        if g:
-            return jsonify({"history": g.get("history", [])})
+        # History is already included in _get_room's MongoDB load,
+        # but if we explicitly need to handle it separately:
         return jsonify({"error": "Room not found"}), 404
-    return jsonify({"history": room["history"]})
+    return jsonify({"history": room.get("history", [])})
 
 
 # ---------------------------------------------------------------------------
