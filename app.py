@@ -10,7 +10,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from pymongo import MongoClient
 
 app = Flask(__name__)
@@ -40,8 +40,9 @@ def _generate_code(length=5):
 
 def _get_room(code):
     """
-    Retrieve room state from local memory or MongoDB.
-    Ensures consistency across multiple Gunicorn workers.
+    Retrieve room state from MongoDB (always fresh).
+    Never short-circuit from the in-memory cache so that all
+    Gunicorn workers see the latest state.
     """
     if not code:
         return None
@@ -49,11 +50,7 @@ def _get_room(code):
     # Normalize code
     code = code.strip().upper()
     
-    # 1. Check local memory
-    if code in rooms:
-        return rooms[code]
-    
-    # 2. Check MongoDB
+    # Always read from MongoDB for consistency across workers
     doc = games_collection.find_one({"room_code": code}, {"_id": 0})
     if doc:
         # Deserialize vote_tokens (list -> set)
@@ -67,6 +64,16 @@ def _get_room(code):
         doc.setdefault("events", [])
         doc.setdefault("vote_times", {})
         doc.setdefault("votes", {})
+        doc.setdefault("roles", {"mafia": "", "doctor": "", "detective": "", "joker": ""})
+        doc.setdefault("eliminated", [])
+        doc.setdefault("players", [])
+        doc.setdefault("voting_open", False)
+        doc.setdefault("voting_ended", False)
+        doc.setdefault("day", 1)
+        doc.setdefault("joker_message", False)
+        doc.setdefault("voting_start_time", None)
+        doc.setdefault("max_players", 10)
+        doc.setdefault("status", "active")
         
         # Cache in local memory for this worker
         rooms[code] = doc
@@ -153,17 +160,44 @@ def join_room():
     name = request.form.get("player_name", "").strip()
 
     if not code or not name:
+        flash("Please enter both a room code and your name.")
         return redirect(url_for("index"))
 
-    room = _get_room(code)
+    # Force a fresh read from MongoDB (bypass local cache)
+    doc = games_collection.find_one({"room_code": code}, {"_id": 0})
+    if doc:
+        if "vote_tokens" in doc:
+            doc["vote_tokens"] = set(doc["vote_tokens"])
+        else:
+            doc["vote_tokens"] = set()
+        doc.setdefault("history", [])
+        doc.setdefault("events", [])
+        doc.setdefault("vote_times", {})
+        doc.setdefault("votes", {})
+        doc.setdefault("roles", {"mafia": "", "doctor": "", "detective": "", "joker": ""})
+        doc.setdefault("eliminated", [])
+        doc.setdefault("players", [])
+        doc.setdefault("voting_open", False)
+        doc.setdefault("voting_ended", False)
+        doc.setdefault("day", 1)
+        doc.setdefault("joker_message", False)
+        doc.setdefault("voting_start_time", None)
+        doc.setdefault("max_players", 10)
+        doc.setdefault("status", "active")
+        rooms[code] = doc
+
+    room = rooms.get(code)
     if not room:
+        flash("Room not found. Check the code and try again.")
         return redirect(url_for("index"))
 
     if len(room["players"]) >= room["max_players"]:
+        flash("Room is full.")
         return redirect(url_for("index"))
 
     # Prevent duplicate names
     if any(p["name"].lower() == name.lower() for p in room["players"]):
+        flash("That name is already taken. Use a different name.")
         return redirect(url_for("index"))
 
     player_id = len(room["players"]) + 1
@@ -328,6 +362,7 @@ def api_vote():
     if device_token:
         room["vote_tokens"].add(device_token)
 
+    _sync_to_db(code)
     return jsonify({"success": True})
 
 
