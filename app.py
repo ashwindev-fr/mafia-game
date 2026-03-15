@@ -84,7 +84,7 @@ def _get_room(code):
 
 def _sync_to_db(code):
     """Persist the current room state to MongoDB."""
-    room = _get_room(code)
+    room = rooms.get(code)
     if not room:
         return
     
