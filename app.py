@@ -40,8 +40,8 @@ def _generate_code(length=5):
 
 def _get_room(code):
     """
-    Retrieve room state.
-    First check in-memory cache, then fallback to MongoDB.
+    Retrieve room state from MongoDB.
+    Always read from DB so all 4 Gunicorn workers see the latest state.
     """
     if not code:
         return None
@@ -49,11 +49,7 @@ def _get_room(code):
     # Normalize code
     code = code.strip().upper()
     
-    # Fast path: check local memory first
-    if code in rooms:
-        return rooms[code]
-    
-    # Fallback to MongoDB
+    # Always read from MongoDB for consistency across workers
     doc = games_collection.find_one({"room_code": code}, {"_id": 0})
     if doc:
         # Deserialize vote_tokens (list -> set)
@@ -85,9 +81,13 @@ def _get_room(code):
     return None
 
 
-def _sync_to_db(code):
-    """Persist the current room state to MongoDB."""
-    room = rooms.get(code)
+def _sync_to_db(code, room=None):
+    """Persist the current room state to MongoDB.
+    Pass `room` explicitly to avoid worker cache misses.
+    """
+    if not room:
+        room = rooms.get(code)
+    
     if not room:
         return
     
@@ -152,7 +152,7 @@ def create_room():
         "created_at": datetime.now(timezone.utc),
         "status": "active",
     }
-    _sync_to_db(code)
+    _sync_to_db(code, rooms[code])
     session[f"admin_{code}"] = admin_token
     return redirect(url_for("admin_page", code=code))
 
@@ -188,7 +188,7 @@ def join_room():
 
 
 
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return redirect(url_for("player_page", code=code, player_id=player_id))
 
 
@@ -340,7 +340,7 @@ def api_vote():
         room["vote_times"][str(player_id)] = round(time.time() - room["voting_start_time"], 1)
 
 
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
@@ -360,7 +360,7 @@ def api_start_voting():
     # Log event
     _add_event(room, f"Voting opened for Day {room['day']}")
     
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
@@ -390,7 +390,7 @@ def api_end_voting():
     
     _add_event(room, f"Voting closed for Day {room['day']}. {len(room['votes'])} votes cast.")
 
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
@@ -410,7 +410,7 @@ def api_reset_round():
     room["joker_message"] = False
     room["voting_start_time"] = None
     room["day"] += 1
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
@@ -429,7 +429,7 @@ def api_eliminate():
         if player:
             _add_event(room, f"Player #{player['id']} ({player['name']}) was eliminated in Day {room['day']}.")
             
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
@@ -444,7 +444,7 @@ def api_joker_wins():
     room["joker_message"] = True
     room["status"] = "finished"
     _add_event(room, "Game Ended: Joker wins!")
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
@@ -469,7 +469,7 @@ def api_save_roles():
         "joker": roles.get("joker", "")
     }
     
-    _sync_to_db(code)
+    _sync_to_db(code, room)
     return jsonify({"success": True})
 
 
