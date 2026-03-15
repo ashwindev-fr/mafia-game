@@ -35,7 +35,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
+          envs: MONGO_URI
           script: |
             cd ~/mafia-voting-app
-            echo "MONGO_URI=${{ secrets.MONGO_URI }}" > .env
+            echo "MONGO_URI=$MONGO_URI" > .env
             ./deploy.sh
