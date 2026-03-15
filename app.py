@@ -203,9 +203,7 @@ def join_room():
     player_id = len(room["players"]) + 1
     room["players"].append({"id": player_id, "name": name})
 
-    # Give this browser a device token for double-vote prevention
-    device_token = uuid.uuid4().hex
-    session[f"device_{code}_{player_id}"] = device_token
+
 
     _sync_to_db(code)
     return redirect(url_for("player_page", code=code, player_id=player_id))
@@ -351,16 +349,13 @@ def api_vote():
     if str(player_id) in room["votes"]:
         return jsonify({"error": "You have already voted this round"}), 400
 
-    # Token-based double-vote prevention
-    if device_token and device_token in room["vote_tokens"]:
-        return jsonify({"error": "This device has already voted"}), 400
+
 
     room["votes"][str(player_id)] = target_id
     # Record time taken
     if room["voting_start_time"]:
         room["vote_times"][str(player_id)] = round(time.time() - room["voting_start_time"], 1)
-    if device_token:
-        room["vote_tokens"].add(device_token)
+
 
     _sync_to_db(code)
     return jsonify({"success": True})

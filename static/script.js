@@ -13,16 +13,7 @@ let PREVIOUS_STATE = null;
 let TIMER_INTERVAL = null;
 let VOTING_START_TIME = null;
 
-// ---- Device token for double-vote prevention (localStorage) ----
-function getDeviceToken(roomCode, round) {
-    const key = `mafia_token_${roomCode}_${PLAYER_ID}_${round}`;
-    let token = localStorage.getItem(key);
-    if (!token) {
-        token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-        localStorage.setItem(key, token);
-    }
-    return token;
-}
+
 
 function hasVotedThisRound(roomCode, round) {
     return localStorage.getItem(`mafia_voted_${roomCode}_${PLAYER_ID}_${round}`) === "true";
@@ -281,7 +272,7 @@ async function submitVote(targetId) {
         return; // already voted
     }
 
-    const token = getDeviceToken(ROOM_CODE, round);
+
 
     try {
         const res = await fetch("/api/vote", {
@@ -290,8 +281,7 @@ async function submitVote(targetId) {
             body: JSON.stringify({
                 room_code: ROOM_CODE,
                 player_id: PLAYER_ID,
-                target_id: targetId,
-                device_token: token,
+                target_id: targetId
             }),
         });
         const data = await res.json();
