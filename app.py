@@ -167,9 +167,8 @@ def join_room():
         return redirect(url_for("index"))
 
     # Retrieve the room (checks cache first then DB)
-    doc = _get_room(code)
+    room = _get_room(code)
 
-    room = rooms.get(code)
     if not room:
         flash("Room not found. Check the code and try again.")
         return redirect(url_for("index"))
