@@ -177,10 +177,11 @@ def join_room():
         flash("Room is full.")
         return redirect(url_for("index"))
 
-    # Prevent duplicate names
-    if any(p["name"].lower() == name.lower() for p in room["players"]):
-        flash("That name is already taken. Use a different name.")
-        return redirect(url_for("index"))
+    # Prevent duplicate names or handle double-submissions gracefully
+    existing_player = next((p for p in room["players"] if p["name"].lower() == name.lower()), None)
+    if existing_player:
+        # If the user double-clicked, or is rejoining on a different device, just send them to their player page
+        return redirect(url_for("player_page", code=code, player_id=existing_player["id"]))
 
     player_id = len(room["players"]) + 1
     room["players"].append({"id": player_id, "name": name})
