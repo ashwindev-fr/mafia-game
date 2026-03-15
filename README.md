@@ -88,11 +88,12 @@ mafia-voting-app/
 
 ### Option 1: Local Development
 
-**Prerequisites:** Python 3.8+, MongoDB running on `localhost:27017`
+**Prerequisites:** Python 3.8+, MongoDB Cloud cluster
 
 ```bash
 cd mafia-voting-app
 pip install -r requirements.txt
+export MONGO_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/mafia_games"
 python app.py
 ```
 
@@ -104,6 +105,8 @@ The server starts at **http://127.0.0.1:5000**
 
 ```bash
 cd mafia-voting-app
+# Create a .env file with your MongoDB Cloud connection string
+echo "MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/mafia_games" > .env
 docker-compose up -d --build
 ```
 
@@ -113,12 +116,6 @@ To stop:
 
 ```bash
 docker-compose down
-```
-
-To stop and remove all data:
-
-```bash
-docker-compose down -v
 ```
 
 ---
@@ -136,10 +133,10 @@ Internet         │         Docker Compose           │
                  │                       │          │
                  │                  ┌────▼─────┐    │
                  │                  │ MongoDB  │    │
-                 │                  │ :27017   │    │
+                 │                  │ Cloud    │    │
                  │                  └──────────┘    │
-                 │                  (persistent     │
-                 │                   volume)        │
+                 │                                  │
+                 │                                  │
                  └─────────────────────────────────┘
 ```
 
@@ -149,7 +146,6 @@ Internet         │         Docker Compose           │
 | ------- | ------------------- | ------------------ | --------------------------------- |
 | `nginx` | `nginx:alpine`      | `80 → app:5000`    | Reverse proxy, public entry point |
 | `app`   | Custom (Dockerfile) | `5000` (internal)  | Flask + Gunicorn backend          |
-| `mongo` | `mongo:7`           | `27017` (internal) | Database with persistent volume   |
 
 All containers have `restart: always` — they automatically restart if the server
 reboots.
@@ -185,6 +181,8 @@ exit
 ```bash
 git clone https://github.com/ashwindev-fr/mafia-game.git
 cd mafia-game
+# Create a .env file with your MongoDB Cloud connection string
+echo "MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/mafia_games" > .env
 docker-compose up -d --build
 ```
 
@@ -193,7 +191,7 @@ The app is now live at `http://<your-ec2-public-ip>`
 ### 4. Verify
 
 ```bash
-docker-compose ps        # All 3 containers should be "Up"
+docker-compose ps        # Both containers should be "Up"
 docker-compose logs -f   # Watch live logs
 ```
 
@@ -222,6 +220,7 @@ Add these to your repo settings (**Settings > Secrets > Actions**):
 - `DOCKER_PASS`: Your Docker Hub token/password.
 - `EC2_HOST`: Your EC2 Public IP.
 - `EC2_KEY`: Your `.pem` private key content.
+- `MONGO_URI`: Your MongoDB Cloud connection string.
 
 #### 2. EC2 Preparation
 
@@ -250,8 +249,7 @@ Add these to your repo settings (**Settings > Secrets > Actions**):
   elimination, joker wins
 - Each document: room code, players, votes, full day-by-day history,
   eliminations, timestamps
-- **Connection:** reads `MONGO_URI` env var (default:
-  `mongodb://localhost:27017/`)
+- **Connection:** reads `MONGO_URI` env var
 
 ---
 

@@ -8,22 +8,8 @@ services:
     expose:
       - "5000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_URI=${MONGO_URI}
       - SECRET_KEY=mafia-prod-secret-random-99
-    depends_on:
-      - mongo
-    networks:
-      - mafia-network
-
-  # ---------- MongoDB ----------
-  mongo:
-    image: mongo:7
-    container_name: mafia-mongo
-    restart: always
-    volumes:
-      - mongo-data:/data/db
-    expose:
-      - "27017"
     networks:
       - mafia-network
 
@@ -40,10 +26,6 @@ services:
       - app
     networks:
       - mafia-network
-
-volumes:
-  mongo-data:
-
 
 networks:
   mafia-network:
