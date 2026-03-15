@@ -40,9 +40,8 @@ def _generate_code(length=5):
 
 def _get_room(code):
     """
-    Retrieve room state from MongoDB (always fresh).
-    Never short-circuit from the in-memory cache so that all
-    Gunicorn workers see the latest state.
+    Retrieve room state.
+    First check in-memory cache, then fallback to MongoDB.
     """
     if not code:
         return None
@@ -50,7 +49,11 @@ def _get_room(code):
     # Normalize code
     code = code.strip().upper()
     
-    # Always read from MongoDB for consistency across workers
+    # Fast path: check local memory first
+    if code in rooms:
+        return rooms[code]
+    
+    # Fallback to MongoDB
     doc = games_collection.find_one({"room_code": code}, {"_id": 0})
     if doc:
         # Deserialize vote_tokens (list -> set)
@@ -163,28 +166,8 @@ def join_room():
         flash("Please enter both a room code and your name.")
         return redirect(url_for("index"))
 
-    # Force a fresh read from MongoDB (bypass local cache)
-    doc = games_collection.find_one({"room_code": code}, {"_id": 0})
-    if doc:
-        if "vote_tokens" in doc:
-            doc["vote_tokens"] = set(doc["vote_tokens"])
-        else:
-            doc["vote_tokens"] = set()
-        doc.setdefault("history", [])
-        doc.setdefault("events", [])
-        doc.setdefault("vote_times", {})
-        doc.setdefault("votes", {})
-        doc.setdefault("roles", {"mafia": "", "doctor": "", "detective": "", "joker": ""})
-        doc.setdefault("eliminated", [])
-        doc.setdefault("players", [])
-        doc.setdefault("voting_open", False)
-        doc.setdefault("voting_ended", False)
-        doc.setdefault("day", 1)
-        doc.setdefault("joker_message", False)
-        doc.setdefault("voting_start_time", None)
-        doc.setdefault("max_players", 10)
-        doc.setdefault("status", "active")
-        rooms[code] = doc
+    # Retrieve the room (checks cache first then DB)
+    doc = _get_room(code)
 
     room = rooms.get(code)
     if not room:
